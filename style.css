@@ -64,3 +64,8 @@ footer { border-top: 1px solid var(--border); margin-top: 28px; padding-top: 17p
 input[type=number], select { width: 100%; min-width: 0; padding: 10px 11px; border: 1px solid var(--border); border-radius: 9px; background: #111722; color: var(--text); font: inherit; }
 .secondary-button { width: auto; flex: 0 0 auto; padding: 7px 10px; font-size: 12px; background: #303b50; color: var(--text); }
 @media (max-width: 480px) { .settings-grid { grid-template-columns: 1fr; } .settings-heading { align-items: flex-start; } }
+
+iframe:hover {
+  width: 300px;
+  height: 300px;
+}
