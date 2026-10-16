@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Audio Scrambler</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="panel">
+    <header>
+      <div class="eyebrow">BROWSER AUDIO TOOL</div>
+      <h1>Audio Scrambler</h1>
+      <p>Scramble audio locally in your browser. Your file is not uploaded anywhere.</p>
+    </header>
+
+    <label class="file-picker" for="audioFile">
+      <span class="file-icon" aria-hidden="true">♫</span>
+      <strong>Choose an audio file</strong>
+      <span id="fileName">MP3, WAV, OGG, FLAC, M4A (depending on browser support)</span>
+      <input id="audioFile" type="file" accept="audio/*,.wav,.mp3,.ogg,.flac,.m4a,.aac">
+    </label>
+
+    <section class="settings">
+      <h2>Settings</h2>
+      <label>
+        Random seed
+        <input id="seed" type="number" value="613026" step="1">
+      </label>
+      <p class="hint">Use the same seed and input file to get repeatable scrambling choices.</p>
+    </section>
+
+    <button id="process" disabled>Scramble audio</button>
+    <div id="status" role="status" aria-live="polite">Choose an audio file to begin.</div>
+    <progress id="progress" max="100" value="0" hidden></progress>
+
+    <section id="result" hidden>
+      <h2>Scrambled audio</h2>
+      <audio id="preview" controls></audio>
+      <a id="download" class="download" download="scrambled.wav">Download WAV</a>
+      <p id="details" class="hint"></p>
+    </section>
+
+    <footer>
+      Prototype · Stereo preserved · 44.1 kHz output · 16-bit PCM WAV
+    </footer>
+  </main>
+  <script src="scrambler.js"></script>
+</body>
+</html>
