@@ -1,14 +1,17 @@
 (() => {
   "use strict";
 
-  const TARGET_SR = 44100;
-  const CLIP_SECONDS = 2;
-  const REVERSE_CHANCE = 1 / 4;
-  const RATIO = 3.5;
-  const FADE_SECONDS = 0.01;
-  const SILENCE_SECONDS = 0.04;
-  const EMPTY_CHANCE = 0.02;
-  const DISTANCE_SECONDS = 10;
+  const DEFAULTS = {
+    seed: 613026,
+    sampleRate: 44100,
+    clipSeconds: 2,
+    reverseChance: 0.25,
+    ratio: 3.5,
+    fadeSeconds: 0.01,
+    silenceSeconds: 0.04,
+    emptyChance: 0.02,
+    distanceSeconds: 10
+  };
 
   const fileInput = document.querySelector("#audioFile");
   const fileName = document.querySelector("#fileName");
@@ -121,33 +124,33 @@
     if (peak > 0) for (const ch of channels) for (let i = 0; i < ch.length; i++) ch[i] /= peak;
   }
 
-  function distortStereo(inputChannels, rng, onProgress) {
+  function distortStereo(inputChannels, rng, onProgress, settings) {
     let channels = inputChannels.map(ch => new Float32Array(ch));
     const initialLength = channels[0].length;
-    const clipSize = Math.floor(CLIP_SECONDS * TARGET_SR);
-    const iterations = Math.floor(initialLength * RATIO / clipSize);
-    const srDistance = TARGET_SR * DISTANCE_SECONDS;
+    const sampleRate = settings.sampleRate;
+    const clipSize = Math.max(1, Math.floor(settings.clipSeconds * sampleRate));
+    const iterations = Math.floor(initialLength * settings.ratio / clipSize);
 
     for (let i = 0; i < iterations; i++) {
       const len = channels[0].length;
       const size1 = Math.floor(clipSize * Math.pow(1.1, rng.random() * 2 - 1));
       const size2 = Math.floor(clipSize * Math.pow(1.1, rng.random() * 2 - 1));
 
-      if (Math.floor(len - Math.max(size2, size1) * 2 - TARGET_SR * 5) <= 0) break;
+      if (Math.floor(len - Math.max(size2, size1) * 2 - sampleRate * 5) <= 0) break;
 
-      let id1 = rng.randrange(Math.floor(len - Math.max(size2, size1) * 2 - TARGET_SR * 5));
-      let id2 = Math.min(id1 + Math.floor(TARGET_SR * DISTANCE_SECONDS * rng.random()), len - 1 - Math.max(size2, size1));
+      let id1 = rng.randrange(Math.floor(len - Math.max(size2, size1) * 2 - sampleRate * 5));
+      let id2 = Math.min(id1 + Math.floor(sampleRate * settings.distanceSeconds * rng.random()), len - 1 - Math.max(size2, size1));
 
       if (rng.random() > 0.5) { const tmp = id2; id2 = id1; id1 = tmp; }
 
-      const silenceLength = Math.floor(TARGET_SR * SILENCE_SECONDS * rng.random());
-      const reverse = rng.random() < REVERSE_CHANCE;
-      const empty = rng.random() < EMPTY_CHANCE;
-      const fs = FADE_SECONDS * rng.random();
+      const silenceLength = Math.floor(sampleRate * settings.silenceSeconds * rng.random());
+      const reverse = rng.random() < settings.reverseChance;
+      const empty = rng.random() < settings.emptyChance;
+      const fs = settings.fadeSeconds * rng.random();
 
       let edgesize;
       let clip2Length = size2 + silenceLength;
-      edgesize = Math.min(Math.floor(TARGET_SR * fs), Math.floor(clip2Length / 2));
+      edgesize = Math.min(Math.floor(sampleRate * fs), Math.floor(clip2Length / 2));
       const unfadedlen = clip2Length - edgesize * 2;
 
       // Build the output layout once, applying identical edit positions to each channel.
@@ -222,7 +225,7 @@
     return new Blob([buffer], { type: "audio/wav" });
   }
 
-  async function decodeAndResample(file) {
+  async function decodeAndResample(file, targetSampleRate) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) throw new Error("This browser does not support the Web Audio API.");
     const ctx = new AudioContextClass();
@@ -233,8 +236,8 @@
       if (decoded.numberOfChannels > 2) {
         status.textContent = "Input has more than two channels; keeping the first two.";
       }
-      const frameCount = Math.ceil(decoded.duration * TARGET_SR);
-      const offline = new OfflineAudioContext(channelsToKeep, frameCount, TARGET_SR);
+      const frameCount = Math.ceil(decoded.duration * targetSampleRate);
+      const offline = new OfflineAudioContext(channelsToKeep, frameCount, targetSampleRate);
       const source = offline.createBufferSource();
       const trimmed = offline.createBuffer(channelsToKeep, decoded.length, decoded.sampleRate);
       for (let c = 0; c < channelsToKeep; c++) trimmed.copyToChannel(decoded.getChannelData(c), c);
@@ -249,6 +252,53 @@
       await ctx.close();
     }
   }
+
+  const settingsInputs = {
+    seed: document.querySelector("#seed"),
+    sampleRate: document.querySelector("#sampleRate"),
+    clipSeconds: document.querySelector("#clipSeconds"),
+    reverseChance: document.querySelector("#reverseChance"),
+    ratio: document.querySelector("#ratio"),
+    fadeSeconds: document.querySelector("#fadeSeconds"),
+    silenceSeconds: document.querySelector("#silenceSeconds"),
+    emptyChance: document.querySelector("#emptyChance"),
+    distanceSeconds: document.querySelector("#distanceSeconds")
+  };
+
+  function readSettings() {
+    const number = key => Number(settingsInputs[key].value);
+    const settings = {
+      seed: number("seed"),
+      sampleRate: number("sampleRate"),
+      clipSeconds: number("clipSeconds"),
+      reverseChance: number("reverseChance") / 100,
+      ratio: number("ratio"),
+      fadeSeconds: number("fadeSeconds"),
+      silenceSeconds: number("silenceSeconds"),
+      emptyChance: number("emptyChance") / 100,
+      distanceSeconds: number("distanceSeconds")
+    };
+    for (const [key, input] of Object.entries(settingsInputs)) {
+      if (!input.checkValidity() || input.value.trim() === "") {
+        input.reportValidity();
+        throw new Error(`Please enter a valid value for ${key}.`);
+      }
+    }
+    if (!Number.isSafeInteger(settings.seed)) throw new Error("Random seed must be a whole number within JavaScript's safe integer range.");
+    return settings;
+  }
+
+  document.querySelector("#resetSettings").addEventListener("click", () => {
+    settingsInputs.seed.value = DEFAULTS.seed;
+    settingsInputs.sampleRate.value = String(DEFAULTS.sampleRate);
+    settingsInputs.clipSeconds.value = DEFAULTS.clipSeconds;
+    settingsInputs.reverseChance.value = DEFAULTS.reverseChance * 100;
+    settingsInputs.ratio.value = DEFAULTS.ratio;
+    settingsInputs.fadeSeconds.value = DEFAULTS.fadeSeconds;
+    settingsInputs.silenceSeconds.value = DEFAULTS.silenceSeconds;
+    settingsInputs.emptyChance.value = DEFAULTS.emptyChance * 100;
+    settingsInputs.distanceSeconds.value = DEFAULTS.distanceSeconds;
+  });
 
   fileInput.addEventListener("change", () => {
     selectedFile = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
@@ -268,21 +318,21 @@
     result.hidden = true;
     const start = performance.now();
     try {
+      const settings = readSettings();
       status.textContent = "Decoding and resampling audio…";
-      let channels = await decodeAndResample(selectedFile);
+      let channels = await decodeAndResample(selectedFile, settings.sampleRate);
       normalizeTogether(channels);
-      const seedValue = Number(document.querySelector("#seed").value);
-      const rng = new PythonRandom(seedValue);
+      const rng = new PythonRandom(settings.seed);
       status.textContent = `Scrambling ${channels.length === 2 ? "stereo" : "mono"} audio…`;
-      channels = distortStereo(channels, rng, p => { progress.value = Math.round(p * 100); });
-      const wav = encodeWav(channels, TARGET_SR);
+      channels = distortStereo(channels, rng, p => { progress.value = Math.round(p * 100); }, settings);
+      const wav = encodeWav(channels, settings.sampleRate);
       if (currentUrl) URL.revokeObjectURL(currentUrl);
       currentUrl = URL.createObjectURL(wav);
       preview.src = currentUrl;
       download.href = currentUrl;
       download.download = `${selectedFile.name.replace(/\.[^.]+$/, "") || "audio"}_scrambled.wav`;
-      const seconds = (channels[0].length / TARGET_SR).toFixed(2);
-      details.textContent = `${channels.length === 2 ? "Stereo" : "Mono"} · 44,100 Hz · ${seconds} seconds · ${(wav.size / 1048576).toFixed(2)} MB · ${(performance.now() - start) / 1000 < 60 ? ((performance.now() - start) / 1000).toFixed(1) + " s processing time" : "processing complete"}.`;
+      const seconds = (channels[0].length / settings.sampleRate).toFixed(2);
+      details.textContent = `${channels.length === 2 ? "Stereo" : "Mono"} · ${settings.sampleRate.toLocaleString()} Hz · ${seconds} seconds · ${(wav.size / 1048576).toFixed(2)} MB · ${(performance.now() - start) / 1000 < 60 ? ((performance.now() - start) / 1000).toFixed(1) + " s processing time" : "processing complete"}.`;
       result.hidden = false;
       status.textContent = "Done! Preview the result or download the WAV file.";
       progress.value = 100;

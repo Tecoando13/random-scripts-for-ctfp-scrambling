@@ -4,9 +4,22 @@
 1. Extract the ZIP.
 2. Open `index.html` in a modern browser (Edge or Chrome recommended).
 3. Choose an audio file, leave the seed at `613026` for the default, and click **Scramble audio**.
-4. Preview the result or click **Download WAV**.
+4. Adjust any scrambling parameter if desired, then click **Scramble audio**. Preview the result or click **Download WAV**.
 
 No Python, libraries, server, or upload is required. The browser processes the file locally.
+
+## Adjustable parameters
+- **Random seed**: integer seed for repeatable random choices (default `613026`).
+- **Sample rate**: output/resampling rate (22,050, 32,000, 44,100, or 48,000 Hz).
+- **Clip seconds**: base clip size in seconds (default `2`).
+- **Ratio**: controls iteration count (default `3.5`).
+- **Reverse chance**: probability of reversing a clip, as a percentage (default `25%`).
+- **Empty chance**: probability of reducing a clip to 10% volume, as a percentage (default `2%`).
+- **Fade seconds**: maximum fade length (default `0.01`).
+- **Silence seconds**: maximum silence appended to a clip (default `0.04`).
+- **Distance seconds**: maximum random offset used when choosing the second clip position (default `10`).
+
+Use **Reset defaults** to restore the original parameter values.
 
 ## Notes and limitations
 - Stereo is preserved for stereo inputs; mono remains mono. For inputs with more than two channels, only the first two channels are used.
