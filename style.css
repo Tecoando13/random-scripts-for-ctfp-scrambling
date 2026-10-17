@@ -65,7 +65,12 @@ input[type=number], select { width: 100%; min-width: 0; padding: 10px 11px; bord
 .secondary-button { width: auto; flex: 0 0 auto; padding: 7px 10px; font-size: 12px; background: #303b50; color: var(--text); }
 @media (max-width: 480px) { .settings-grid { grid-template-columns: 1fr; } .settings-heading { align-items: flex-start; } }
 
+iframe {
+  opacity: 0.3;
+}
+
 iframe:hover {
   width: 300px;
   height: 300px;
+  opacity: 0.9;
 }
